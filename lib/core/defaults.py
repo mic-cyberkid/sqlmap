@@ -28,6 +28,8 @@ _defaults = {
     "jsonAppend": False,
     "jsonAuto": False,
     "randomizeId": False,
+    "jsonEscape": False,
+    "jsonDiffPath": None,
     "adaptiveSleep": False,
     "baseDelay": 2.0,
     "jitterTolerance": 0.4,

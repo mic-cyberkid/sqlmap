@@ -357,6 +357,12 @@ def cmdLineParser(argv=None):
         json_opts.add_argument("--randomize-id", dest="randomizeId", action="store_true",
             help="Randomize the \"id\" field in JSON-RPC requests")
 
+        json_opts.add_argument("--json-escape", dest="jsonEscape", action="store_true",
+            help="Escape all payload characters using JSON Unicode escapes (\\uXXXX)")
+
+        json_opts.add_argument("--json-diff-path", dest="jsonDiffPath",
+            help="JSONPath in response to focus comparison on (improves precision)")
+
         # Session options
         session = parser.add_argument_group("Session", "These options can be used for automated session management")
 

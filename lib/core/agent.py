@@ -230,6 +230,8 @@ class Agent(object):
                 _newValue = self.adjustLateValues(newValue)
                 updated = updateJsonByPath(deserialized, path, self.addPayloadDelimiters(_newValue), append=conf.jsonAppend)
                 retVal = json.dumps(updated, separators=(',', ':') if ", " not in paramString else None)
+                if conf.jsonEscape:
+                    retVal = retVal.replace("\\\\u", "\\u")
 
             if retVal:
                 retVal = retVal.replace(kb.customInjectionMark, "").replace(REPLACEMENT_MARKER, kb.customInjectionMark)
@@ -1248,10 +1250,24 @@ class Agent(object):
 
         return caseExpression
 
+    def jsonEscape(self, value):
+        """
+        Escapes characters using JSON Unicode escapes (\\uXXXX)
+        """
+        if not value:
+            return value
+
+        retVal = ""
+        for char in getUnicode(value):
+            retVal += "\\u%04x" % ord(char)
+        return retVal
+
     def addPayloadDelimiters(self, value):
         """
         Adds payload delimiters around the input string
         """
+        if value and conf.jsonEscape:
+            value = self.jsonEscape(value)
 
         return "%s%s%s" % (PAYLOAD_DELIMITER, value, PAYLOAD_DELIMITER) if value else value
 

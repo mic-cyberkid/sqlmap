@@ -70,6 +70,29 @@ def _comparison(page, headers, code, getRatioValue, pageLength):
     if page is None and pageLength is None:
         return None
 
+    if conf.jsonDiffPath:
+        deserialized_orig = parseJson(kb.originalPage)
+        deserialized_curr = parseJson(page)
+
+        if deserialized_orig and deserialized_curr:
+            logger.info("Differential comparison using JSONPath: %s" % conf.jsonDiffPath)
+            from thirdparty.jsonpath_ng import parse as parse_jsonpath
+            try:
+                jsonpath_expr = parse_jsonpath(conf.jsonDiffPath)
+                matches_orig = jsonpath_expr.find(deserialized_orig)
+                matches_curr = jsonpath_expr.find(deserialized_curr)
+
+                if matches_orig and matches_curr:
+                    val_orig = matches_orig[0].value
+                    val_curr = matches_curr[0].value
+
+                    if val_orig == val_curr:
+                        return True if not getRatioValue else 1.0
+                    else:
+                        return False if not getRatioValue else 0.0
+            except:
+                pass
+
     if any((conf.trueJson, conf.falseJson)):
         deserialized = parseJson(page)
         if deserialized:

@@ -47,6 +47,8 @@ This fork includes advanced support for JSON-based requests and nested parameter
 * **Boolean-Based JSON Observer**: Custom indicators for True/False responses in JSON (e.g., `--true-json="$.result len 0"`).
 * **Adaptive Sleep Delay**: Reduced false positives in time-based injections via `--adaptive-sleep`.
 * **PoC Reporting**: Generate detailed, reproducible PoC reports using `--poc-report`.
+* **JSON Unicode Obfuscation**: Bypass WAFs by escaping payloads into `\uXXXX` format using `--json-escape`.
+* **Response Diff Precision**: Focus Boolean detection on specific JSON fields using `--json-diff-path="$.result"` to ignore background noise like timestamps.
 
 ### Target Use Case: LimeSurvey RemoteControl API
 Example command for injecting into the LimeSurvey RemoteControl API:

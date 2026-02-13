@@ -364,8 +364,13 @@ class Connect(object):
         else:
             if post and conf.randomizeId:
                 deserialized = parseJson(post)
-                if isinstance(deserialized, dict) and "id" in deserialized:
-                    deserialized["id"] = randomInt()
+                if isinstance(deserialized, dict):
+                    if "id" in deserialized:
+                        deserialized["id"] = randomInt()
+
+                    # Add a junk key to avoid body signature matching
+                    deserialized[randomStr(5, lowercase=True)] = randomStr(8)
+
                     post = json.dumps(deserialized, separators=(',', ':') if ", " not in getUnicode(post) else None)
 
             if not post:

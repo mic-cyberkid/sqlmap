@@ -281,6 +281,8 @@ optDict = {
         "trueJson": "string",
         "falseJson": "string",
         "randomizeId": "boolean",
+        "jsonEscape": "boolean",
+        "jsonDiffPath": "string",
     },
 
     "Session": {
