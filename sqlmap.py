@@ -176,6 +176,17 @@ def main():
 
         init()
 
+        if conf.payloadGen:
+            from extra.payload_gen import generate_payloads
+            if not conf.data:
+                logger.error("payload generation requires --data")
+            else:
+                paths = (conf.jsonPath or "$..*").split(",")
+                results = generate_payloads(conf.data, paths)
+                if results:
+                    dataToStdout(json.dumps(results, indent=4) + "\n")
+            raise SqlmapSilentQuitException
+
         if not conf.updateAll:
             # Postponed imports (faster start)
             if conf.smokeTest:

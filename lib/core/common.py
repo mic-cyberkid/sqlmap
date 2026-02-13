@@ -196,6 +196,7 @@ from thirdparty.clientform.clientform import ParseResponse
 from thirdparty.clientform.clientform import ParseError
 from thirdparty.colorama.initialise import init as coloramainit
 from thirdparty.magic import magic
+from thirdparty.jsonpath_ng import parse as parse_jsonpath
 from thirdparty.odict import OrderedDict
 from thirdparty.six import unichr as _unichr
 from thirdparty.six.moves import collections_abc as _collections
@@ -769,6 +770,45 @@ def paramToDict(place, parameters=None):
                     debugMsg = "provided parameter '%s' " % parameter
                     debugMsg += "is not inside the %s" % place
                     logger.debug(debugMsg)
+
+    if (conf.jsonPath or conf.jsonAuto) and place == PLACE.POST:
+        deserialized = parseJson(parameters)
+        if deserialized:
+            try:
+                if conf.jsonPath:
+                    jsonpath_expr = parse_jsonpath(conf.jsonPath)
+                    matches = jsonpath_expr.find(deserialized)
+                else:
+                    # jsonAuto: try common paths
+                    matches = []
+                    for path in ("$.*", "$.params[*]", "$.params[*][*]", "$.data.*"):
+                        try:
+                            expr = parse_jsonpath(path)
+                            matches.extend(expr.find(deserialized))
+                        except:
+                            pass
+
+                    # Deduplicate matches by path
+                    seen_paths = set()
+                    unique_matches = []
+                    for m in matches:
+                        p = str(m.full_path)
+                        if p not in seen_paths:
+                            seen_paths.add(p)
+                            unique_matches.append(m)
+                    matches = unique_matches
+
+                if matches:
+                    for match in matches:
+                        # Only inject into simple types or if it's explicitly requested via jsonPath
+                        if conf.jsonPath or isinstance(match.value, (bool, int, float, six.string_types)):
+                            # Add a virtual parameter for the JSONPath
+                            param_name = "JSONPath %s" % str(match.full_path)
+                            testableParameters[param_name] = str(match.value)
+                            kb.postHint = POST_HINT.JSON
+            except Exception as ex:
+                debugMsg = "error occurred while parsing JSONPath in paramToDict ('%s')" % getSafeExString(ex)
+                logger.debug(debugMsg)
 
     if testableParameters:
         for parameter, value in testableParameters.items():
@@ -1420,6 +1460,9 @@ def parseJson(content):
     quote = None
     retVal = None
 
+    if not content:
+        return None
+
     for regex in (r"'[^']+'\s*:", r'"[^"]+"\s*:'):
         match = re.search(regex, content)
         if match:
@@ -1434,10 +1477,39 @@ def parseJson(content):
 
             content = re.sub(r"'((?:[^'\\]|\\.)*)'", _, content)
             retVal = json.loads(content)
+        else:
+            retVal = json.loads(content)
     except:
         pass
 
     return retVal
+
+def updateJsonByPath(data, path, value, append=False):
+    """
+    Updates or appends a value in a JSON-like object (dict/list) using JSONPath.
+    """
+    try:
+        jsonpath_expr = parse_jsonpath(path)
+        matches = jsonpath_expr.find(data)
+
+        if not matches:
+            return data
+
+        for match in matches:
+            if append:
+                curr_val = match.value
+                if isinstance(curr_val, list):
+                    curr_val.append(value)
+                    jsonpath_expr.update(data, curr_val)
+                elif isinstance(curr_val, six.string_types):
+                    jsonpath_expr.update(data, curr_val + value)
+            else:
+                jsonpath_expr.update(data, value)
+    except Exception as ex:
+        debugMsg = "error occurred while updating JSON by path ('%s')" % getSafeExString(ex)
+        logger.debug(debugMsg)
+
+    return data
 
 def parsePasswordHash(password):
     """
@@ -2833,6 +2905,29 @@ def wasLastResponseDelayed():
 
         return retVal
     else:
+        effective_delay = conf.timeSec
+        if conf.adaptiveSleep:
+            effective_delay = max(conf.baseDelay + 1.5, conf.timeSec)
+            jitter = conf.jitterTolerance
+
+            # Phase 2 logic (adaptive)
+            if threadData.lastQueryDuration > effective_delay * (1 - jitter):
+                # On every true response: add +0.5 s to effective_delay (up to 2× original)
+                if not hasattr(kb, "adaptiveConsecutiveTrue"):
+                    kb.adaptiveConsecutiveTrue = 0
+                kb.adaptiveConsecutiveTrue += 1
+                if kb.adaptiveConsecutiveTrue >= 1:
+                     conf.timeSec = min(conf.timeSec + 0.5, effective_delay * 2)
+                return True
+            else:
+                if not hasattr(kb, "adaptiveConsecutiveFalse"):
+                    kb.adaptiveConsecutiveFalse = 0
+                kb.adaptiveConsecutiveFalse += 1
+                if kb.adaptiveConsecutiveFalse >= 3:
+                    conf.timeSec = max(conf.timeSec - 0.5, conf.baseDelay)
+                    kb.adaptiveConsecutiveFalse = 0
+                return False
+
         delta = threadData.lastQueryDuration - conf.timeSec
         if Backend.getIdentifiedDbms() in (DBMS.MYSQL,):  # MySQL's SLEEP(X) lasts 0.05 seconds shorter on average
             delta += 0.05

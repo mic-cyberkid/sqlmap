@@ -782,6 +782,9 @@ def start():
                 warnMsg += "constraint"
                 logger.warning(warnMsg)
 
+    if conf.pocReport:
+        conf.dumper.pocReport()
+
     if kb.dataOutputFlag and not conf.multipleTargets:
         logger.info("fetched data logged to text files under '%s'" % conf.outputPath)
 

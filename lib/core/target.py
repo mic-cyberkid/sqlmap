@@ -131,7 +131,12 @@ def _setRequestParams():
 
             return retVal
 
-        if kb.processUserMarks is None and kb.customInjectionMark in conf.data:
+        if conf.jsonPath:
+            logger.info("Custom JSON path injection requested ('%s') — skipping automatic parameter detection" % conf.jsonPath)
+            kb.processUserMarks = False
+            kb.jsonCustomPathActive = True
+
+        if not conf.jsonPath and kb.processUserMarks is None and kb.customInjectionMark in conf.data:
             message = "custom injection marker ('%s') found in %s " % (kb.customInjectionMark, conf.method)
             message += "body. Do you want to process it? [Y/n/q] "
             choice = readInput(message, default='Y').upper()
@@ -144,7 +149,7 @@ def _setRequestParams():
                 if kb.processUserMarks:
                     kb.testOnlyCustom = True
 
-        if re.search(JSON_RECOGNITION_REGEX, conf.data):
+        if not conf.jsonPath and re.search(JSON_RECOGNITION_REGEX, conf.data):
             message = "JSON data found in %s body. " % conf.method
             message += "Do you want to process it? [Y/n/q] "
             choice = readInput(message, default='Y').upper()
@@ -168,7 +173,7 @@ def _setRequestParams():
                                 _ = re.sub(r'(\A|,|\s+)(-?\d[\d\.]*\b)', r'\g<0>%s' % kb.customInjectionMark, _)
                                 conf.data = conf.data.replace(match.group(0), match.group(0).replace(match.group(2), _))
 
-        elif re.search(JSON_LIKE_RECOGNITION_REGEX, conf.data):
+        elif not conf.jsonPath and re.search(JSON_LIKE_RECOGNITION_REGEX, conf.data):
             message = "JSON-like data found in %s body. " % conf.method
             message += "Do you want to process it? [Y/n/q] "
             choice = readInput(message, default='Y').upper()
@@ -187,7 +192,7 @@ def _setRequestParams():
                         conf.data = re.sub(r"((?P<name>'[^']+'|\w+)\s*:\s*'[^']+)'", functools.partial(process, repl=r"\g<1>%s'" % kb.customInjectionMark), conf.data)
                         conf.data = re.sub(r"((?P<name>'[^']+'|\w+)\s*:\s*)(-?\d[\d\.]*\b)", functools.partial(process, repl=r"\g<0>%s" % kb.customInjectionMark), conf.data)
 
-        elif re.search(ARRAY_LIKE_RECOGNITION_REGEX, conf.data):
+        elif not conf.jsonPath and re.search(ARRAY_LIKE_RECOGNITION_REGEX, conf.data):
             message = "Array-like data found in %s body. " % conf.method
             message += "Do you want to process it? [Y/n/q] "
             choice = readInput(message, default='Y').upper()
@@ -200,7 +205,7 @@ def _setRequestParams():
                     conf.data = conf.data.replace(kb.customInjectionMark, ASTERISK_MARKER)
                     conf.data = re.sub(r"(=[^%s]+)" % DEFAULT_GET_POST_DELIMITER, r"\g<1>%s" % kb.customInjectionMark, conf.data)
 
-        elif re.search(XML_RECOGNITION_REGEX, conf.data):
+        elif not conf.jsonPath and re.search(XML_RECOGNITION_REGEX, conf.data):
             message = "SOAP/XML data found in %s body. " % conf.method
             message += "Do you want to process it? [Y/n/q] "
             choice = readInput(message, default='Y').upper()
@@ -214,7 +219,7 @@ def _setRequestParams():
                     conf.data = conf.data.replace(kb.customInjectionMark, ASTERISK_MARKER)
                     conf.data = re.sub(r"(<(?P<name>[^>]+)( [^<]*)?>)([^<]+)(</\2)", functools.partial(process, repl=r"\g<1>\g<4>%s\g<5>" % kb.customInjectionMark), conf.data)
 
-        elif re.search(MULTIPART_RECOGNITION_REGEX, conf.data):
+        elif not conf.jsonPath and re.search(MULTIPART_RECOGNITION_REGEX, conf.data):
             message = "Multipart-like data found in %s body. " % conf.method
             message += "Do you want to process it? [Y/n/q] "
             choice = readInput(message, default='Y').upper()

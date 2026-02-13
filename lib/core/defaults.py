@@ -24,6 +24,13 @@ _defaults = {
     "tablePrefix": "sqlmap",
     "technique": "BEUSTQ",
     "torType": "SOCKS5",
+    "jsonReplace": True,
+    "jsonAppend": False,
+    "jsonAuto": False,
+    "randomizeId": False,
+    "adaptiveSleep": False,
+    "baseDelay": 2.0,
+    "jitterTolerance": 0.4,
 }
 
 defaults = AttribDict(_defaults)
