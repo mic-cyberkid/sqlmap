@@ -5,6 +5,7 @@ Copyright (c) 2006-2026 sqlmap developers (https://sqlmap.org)
 See the file 'LICENSE' for copying permission
 """
 
+import json
 import re
 
 from lib.core.common import Backend
@@ -31,6 +32,7 @@ from lib.core.convert import encodeBase64
 from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
+from lib.core.data import logger
 from lib.core.data import queries
 from lib.core.dicts import DUMP_DATA_PREPROCESS
 from lib.core.dicts import FROM_DUMMY_TABLE
@@ -110,7 +112,24 @@ class Agent(object):
 
         paramString = conf.parameters[place]
         paramDict = conf.paramDict[place]
-        origValue = getUnicode(paramDict[parameter])
+
+        if parameter and parameter.startswith("JSONPath "):
+            from lib.core.common import parseJson
+            path = parameter.split(" ", 1)[1]
+            deserialized = parseJson(paramString)
+            if deserialized:
+                # We need to find the value at this path to set as origValue
+                from thirdparty.jsonpath_ng import parse as parse_jsonpath
+                try:
+                    matches = parse_jsonpath(path).find(deserialized)
+                    origValue = getUnicode(matches[0].value) if matches else ""
+                except:
+                    origValue = ""
+            else:
+                origValue = ""
+        else:
+            origValue = getUnicode(paramDict[parameter])
+
         newValue = getUnicode(newValue) if newValue else newValue
         base64Encoding = re.sub(r" \(.+", "", parameter) in conf.base64Parameter
 
@@ -202,7 +221,20 @@ class Agent(object):
             else:
                 origValue = encodeBase64(origValue, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
 
-        if place in (PLACE.URI, PLACE.CUSTOM_POST, PLACE.CUSTOM_HEADER):
+        if parameter and parameter.startswith("JSONPath ") and place == PLACE.POST:
+            from lib.core.common import parseJson
+            from lib.core.common import updateJsonByPath
+            path = parameter.split(" ", 1)[1]
+            deserialized = parseJson(paramString)
+            if deserialized:
+                _newValue = self.adjustLateValues(newValue)
+                updated = updateJsonByPath(deserialized, path, self.addPayloadDelimiters(_newValue), append=conf.jsonAppend)
+                retVal = json.dumps(updated, separators=(',', ':') if ", " not in paramString else None)
+
+            if retVal:
+                retVal = retVal.replace(kb.customInjectionMark, "").replace(REPLACEMENT_MARKER, kb.customInjectionMark)
+
+        elif place in (PLACE.URI, PLACE.CUSTOM_POST, PLACE.CUSTOM_HEADER):
             _ = "%s%s" % (origValue, kb.customInjectionMark)
 
             if kb.postHint == POST_HINT.JSON and isNumber(origValue) and not isNumber(newValue) and '"%s"' % _ not in paramString:

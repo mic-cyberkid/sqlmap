@@ -10,6 +10,7 @@ from __future__ import division
 import re
 
 from lib.core.common import extractRegexResult
+from lib.core.common import parseJson
 from lib.core.common import getFilteredPageContent
 from lib.core.common import listToStrValue
 from lib.core.common import removeDynamicContent
@@ -68,6 +69,56 @@ def _comparison(page, headers, code, getRatioValue, pageLength):
 
     if page is None and pageLength is None:
         return None
+
+    if any((conf.trueJson, conf.falseJson)):
+        deserialized = parseJson(page)
+        if deserialized:
+            from thirdparty.jsonpath_ng import parse as parse_jsonpath
+
+            def _evaluate(expr, data):
+                # Simple interpreter for JSON indicators
+                # Syntax examples:
+                # "$.result is array and len($.result) > 0"
+                # "status = success"
+                # "$.error contains No survey"
+
+                # For this PoC, we'll focus on JSONPath based checks
+                if expr.startswith("$"):
+                    parts = expr.split(" ", 2)
+                    path = parts[0]
+                    op = parts[1] if len(parts) > 1 else "exists"
+                    val = parts[2] if len(parts) > 2 else None
+
+                    try:
+                        matches = parse_jsonpath(path).find(data)
+                        if op == "exists":
+                            return len(matches) > 0
+                        elif op == "is" and val == "null":
+                            return any(m.value is None for m in matches)
+                        elif op == "is" and val == "array":
+                            return any(isinstance(m.value, list) for m in matches)
+                        elif op == "contains" and val:
+                            return any(val in str(m.value) for m in matches)
+                        elif op == "=" and val:
+                            return any(str(m.value) == val for m in matches)
+                        elif op == "len" and val:
+                            # len($.result) > 0
+                            return any(len(m.value) > int(val) if isinstance(m.value, (list, dict, str)) else False for m in matches)
+                    except:
+                        pass
+                else:
+                    # Simple string match in raw page if not JSONPath
+                    return expr in str(data)
+
+                return False
+
+            if conf.trueJson:
+                if _evaluate(conf.trueJson, deserialized):
+                    return True
+
+            if conf.falseJson:
+                if _evaluate(conf.falseJson, deserialized):
+                    return False
 
     if any((conf.string, conf.notString, conf.regexp)):
         rawResponse = "%s%s" % (listToStrValue(_ for _ in headers.headers if not _.startswith("%s:" % URI_HTTP_HEADER)) if headers else "", page)

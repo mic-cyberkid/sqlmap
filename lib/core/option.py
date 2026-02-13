@@ -2054,6 +2054,8 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     logger.debug(debugMsg)
 
     kb.absFilePaths = set()
+    kb.adaptiveConsecutiveTrue = 0
+    kb.adaptiveConsecutiveFalse = 0
     kb.adjustTimeDelay = None
     kb.alerted = False
     kb.aliasName = randomStr()
@@ -2150,6 +2152,8 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.ignoreNotFound = False
     kb.ignoreTimeout = False
     kb.identifiedWafs = set()
+    kb.jsonCustomPathActive = False
+    kb.pocRequests = []
     kb.injection = InjectionDict()
     kb.injections = []
     kb.jsonAggMode = False
@@ -2927,6 +2931,22 @@ def _basicOptionValidation():
     if conf.loadCookies and not os.path.exists(conf.loadCookies):
         errMsg = "cookies file '%s' does not exist" % os.path.abspath(conf.loadCookies)
         raise SqlmapFilePathException(errMsg)
+
+    if conf.jsonReplace and conf.jsonAppend:
+        errMsg = "options '--json-replace' and '--json-append' are incompatible"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.authUrl and not all((conf.authData, conf.authKeyPath)):
+        errMsg = "option '--auth-url' requires '--auth-data' and '--auth-key-path'"
+        raise SqlmapMissingMandatoryOptionException(errMsg)
+
+    if conf.adaptiveSleep and conf.baseDelay < 0:
+        errMsg = "value for option '--base-delay' must be a positive float"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.jitterTolerance and not (0 <= conf.jitterTolerance <= 1):
+        errMsg = "value for option '--jitter-tolerance' must be between 0 and 1"
+        raise SqlmapSyntaxException(errMsg)
 
 def initOptions(inputOptions=AttribDict(), overrideOptions=False):
     _setConfAttributes()

@@ -6,6 +6,7 @@ See the file 'LICENSE' for copying permission
 """
 
 import binascii
+import json
 import inspect
 import logging
 import os
@@ -140,6 +141,7 @@ from lib.request.comparison import comparison
 from lib.request.direct import direct
 from lib.request.methodrequest import MethodRequest
 from lib.utils.safe2bin import safecharencode
+from extra.session_manager import session_manager
 from thirdparty import six
 from thirdparty.odict import OrderedDict
 from thirdparty.six import unichr as _unichr
@@ -360,6 +362,12 @@ class Connect(object):
         if multipart:
             post = multipart
         else:
+            if post and conf.randomizeId:
+                deserialized = parseJson(post)
+                if isinstance(deserialized, dict) and "id" in deserialized:
+                    deserialized["id"] = randomInt()
+                    post = json.dumps(deserialized, separators=(',', ':') if ", " not in getUnicode(post) else None)
+
             if not post:
                 chunked = False
 
@@ -575,6 +583,21 @@ class Connect(object):
                     req = _urllib.request.Request(url, post, headers)
                 else:
                     return None, None, None
+
+                if conf.authUrl:
+                    req = session_manager.inject_auth_into_request(req)
+
+                if conf.hookPre:
+                    try:
+                        script, func_name = conf.hookPre.split(":")
+                        dirname, filename = os.path.split(script)
+                        if dirname not in sys.path:
+                            sys.path.insert(0, dirname)
+                        module = __import__(filename[:-3] if filename.endswith(".py") else filename)
+                        func = getattr(module, func_name)
+                        req = func(req)
+                    except Exception as ex:
+                        logger.error("error executing pre-hook: %s" % getSafeExString(ex))
 
                 for function in kb.preprocessFunctions:
                     try:
@@ -994,6 +1017,22 @@ class Connect(object):
                     warnMsg = "forced retry of the request because of undesired page content"
                     logger.warning(warnMsg)
                     return Connect._retryProxy(**kwargs)
+
+        if conf.authUrl and session_manager.check_expiration(page):
+            # Retry once if token was expired
+            return Connect.getPage(**kwargs)
+
+        if conf.hookPost:
+            try:
+                script, func_name = conf.hookPost.split(":")
+                dirname, filename = os.path.split(script)
+                if dirname not in sys.path:
+                    sys.path.insert(0, dirname)
+                module = __import__(filename[:-3] if filename.endswith(".py") else filename)
+                func = getattr(module, func_name)
+                page, responseHeaders, code = func(page, responseHeaders, code)
+            except Exception as ex:
+                logger.error("error executing post-hook: %s" % getSafeExString(ex))
 
         processResponse(page, responseHeaders, code, status)
 

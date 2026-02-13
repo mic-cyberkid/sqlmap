@@ -75,13 +75,6 @@ optDict = {
         "evalCode": "string",
     },
 
-    "Optimization": {
-        "optimize": "boolean",
-        "predictOutput": "boolean",
-        "keepAlive": "boolean",
-        "nullConnection": "boolean",
-        "threads": "integer",
-    },
 
     "Injection": {
         "testParameter": "string",
@@ -278,5 +271,42 @@ optDict = {
         "api": "boolean",
         "taskid": "string",
         "database": "string",
+    },
+
+    "JSON": {
+        "jsonPath": "string",
+        "jsonAuto": "boolean",
+        "jsonReplace": "boolean",
+        "jsonAppend": "boolean",
+        "trueJson": "string",
+        "falseJson": "string",
+        "randomizeId": "boolean",
+    },
+
+    "Session": {
+        "authUrl": "string",
+        "authData": "string",
+        "authKeyPath": "string",
+        "authExpireString": "string",
+    },
+
+    "Optimization": {
+        "optimize": "boolean",
+        "predictOutput": "boolean",
+        "keepAlive": "boolean",
+        "nullConnection": "boolean",
+        "threads": "integer",
+        "adaptiveSleep": "boolean",
+        "baseDelay": "float",
+        "jitterTolerance": "float",
+    },
+
+    "Reporting": {
+        "pocReport": "string",
+    },
+
+    "Hooks": {
+        "hookPre": "string",
+        "hookPost": "string",
     }
 }

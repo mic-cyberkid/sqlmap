@@ -324,6 +324,54 @@ def cmdLineParser(argv=None):
         optimization.add_argument("--threads", dest="threads", type=int,
             help="Max number of concurrent HTTP(s) requests (default %d)" % defaults.threads)
 
+        optimization.add_argument("--adaptive-sleep", dest="adaptiveSleep", action="store_true",
+            help="Use adaptive sleep delays for time-based injections")
+
+        optimization.add_argument("--base-delay", dest="baseDelay", type=float,
+            help="Base delay for adaptive sleep (default %.1f)" % defaults.baseDelay)
+
+        optimization.add_argument("--jitter-tolerance", dest="jitterTolerance", type=float,
+            help="Jitter tolerance for time-based injections (default %.1f)" % defaults.jitterTolerance)
+
+        # JSON options
+        json_opts = parser.add_argument_group("JSON", "These options can be used for advanced JSON handling")
+
+        json_opts.add_argument("--json-path", dest="jsonPath",
+            help="JSONPath syntax for injection points (e.g. \"$.params[2][*]\")")
+
+        json_opts.add_argument("--json-auto", dest="jsonAuto", action="store_true",
+            help="Auto-detect and fuzz JSON bodies")
+
+        json_opts.add_argument("--json-replace", dest="jsonReplace", action="store_true",
+            help="Replace value at JSON path (default)")
+
+        json_opts.add_argument("--json-append", dest="jsonAppend", action="store_true",
+            help="Append payload to value at JSON path")
+
+        json_opts.add_argument("--true-json", dest="trueJson",
+            help="Custom \"true\" indicator in JSON responses")
+
+        json_opts.add_argument("--false-json", dest="falseJson",
+            help="Custom \"false\" indicator in JSON responses")
+
+        json_opts.add_argument("--randomize-id", dest="randomizeId", action="store_true",
+            help="Randomize the \"id\" field in JSON-RPC requests")
+
+        # Session options
+        session = parser.add_argument_group("Session", "These options can be used for automated session management")
+
+        session.add_argument("--auth-url", dest="authUrl",
+            help="Login endpoint for automated session retrieval")
+
+        session.add_argument("--auth-data", dest="authData",
+            help="JSON data for login request")
+
+        session.add_argument("--auth-key-path", dest="authKeyPath",
+            help="JSONPath to extract session key from login response")
+
+        session.add_argument("--auth-expire", dest="authExpireString",
+            help="String in response indicating session expiration")
+
         # Injection options
         injection = parser.add_argument_group("Injection", "These options can be used to specify which parameters to test for, provide custom injection payloads and optional tampering scripts")
 
@@ -816,6 +864,18 @@ def cmdLineParser(argv=None):
 
         miscellaneous.add_argument("--wizard", dest="wizard", action="store_true",
             help="Simple wizard interface for beginner users")
+
+        miscellaneous.add_argument("--payload-gen", dest="payloadGen", action="store_true",
+            help="Standalone mode to generate payloads for nested structures")
+
+        miscellaneous.add_argument("--poc-report", dest="pocReport",
+            help="Generate a detailed PoC report in JSON/YAML format")
+
+        miscellaneous.add_argument("--hook-pre", dest="hookPre",
+            help="Python callback before request (e.g. \"script.py:modify_request\")")
+
+        miscellaneous.add_argument("--hook-post", dest="hookPost",
+            help="Python callback after response (e.g. \"script.py:log_response\")")
 
         # Hidden and/or experimental options
         parser.add_argument("--crack", dest="hashFile",

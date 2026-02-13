@@ -24,6 +24,7 @@ from lib.core.common import getTechnique
 from lib.core.common import getTechniqueData
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
+from lib.core.common import parseJson
 from lib.core.common import incrementCounter
 from lib.core.common import initTechnique
 from lib.core.common import isListLike
@@ -151,6 +152,25 @@ def _oneShotErrorUse(expression, field=None, chunkTest=False):
                     extractRegexResult(check, listToStrValue((headers[header] for header in headers if header.lower() != HTTP_HEADER.URI.lower()) if headers else None)),
                     extractRegexResult(check, threadData.lastRedirectMsg[1] if threadData.lastRedirectMsg and threadData.lastRedirectMsg[0] == threadData.lastRequestUID else None)
                 )
+
+                if output is None and page:
+                    # JSON-specific parsing for DB errors
+                    deserialized = parseJson(page)
+                    if deserialized:
+                        from thirdparty.jsonpath_ng import parse as parse_jsonpath
+                        for path in ("$.error", "$.message", "$.result"):
+                            try:
+                                matches = parse_jsonpath(path).find(deserialized)
+                                if matches:
+                                    for match in matches:
+                                        res = extractRegexResult(check, str(match.value))
+                                        if res:
+                                            output = res
+                                            break
+                                if output:
+                                    break
+                            except:
+                                pass
 
                 if output is not None:
                     output = getUnicode(output)

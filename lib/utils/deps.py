@@ -95,6 +95,16 @@ def checkDependencies():
         missing_libraries.add('python-ntlm')
 
     try:
+        __import__("thirdparty.jsonpath_ng")
+        debugMsg = "'jsonpath-ng' third-party library is found"
+        logger.debug(debugMsg)
+    except ImportError:
+        warnMsg = "sqlmap requires 'jsonpath-ng' third-party library "
+        warnMsg += "for advanced JSON handling. It should be bundled in 'thirdparty/'"
+        logger.warning(warnMsg)
+        missing_libraries.add('jsonpath-ng')
+
+    try:
         __import__("httpx")
         debugMsg = "'httpx[http2]' third-party library is found"
         logger.debug(debugMsg)
